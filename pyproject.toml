@@ -1,0 +1,16 @@
+[project]
+name = "cb-movies-recommender"
+version = "0.1.0"
+description = "Demographic and content-based movie recommender over public heterogeneous film datasets (MDX Dubai CST4275)"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "PTH", "RUF"]
