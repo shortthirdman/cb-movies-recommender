@@ -26,3 +26,6 @@ marimo:
 # Run the Streamlit web GUI (requires trained model artefacts)
 app:
 	uv run streamlit run app/streamlit_app.py --server.port 8501
+
+api:
+	uv 

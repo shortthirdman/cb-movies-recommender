@@ -982,10 +982,10 @@ def _write_interactions(
         interactions = interactions.join(catalogue, on="movie_id", how="semi")
 
     # Both sinks stream, so the ratings file is never held in memory whole.
-    if config.output_format is OutputFormat.PARQUET:
-        interactions.sink_parquet(destination, compression=config.parquet_compression)
-    else:
-        interactions.sink_csv(destination)
+    # if config.output_format is OutputFormat.PARQUET:
+    interactions.sink_parquet(destination, compression=config.parquet_compression)
+    # else:
+    interactions.sink_csv(destination)
     LOGGER.info("Wrote interactions to %s", destination)
     return destination
 
