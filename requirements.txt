@@ -37,3 +37,21 @@ beartype==0.22.9
 narwhals==2.24.0
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
+
+# --- Streamlit app -----------------------------------------------------------
+# streamlit-ydata-profiling is NOT listed here on purpose. It declares
+# Requires-Python >=3.10,<3.12 while this project targets 3.12, so pip refuses it
+# outright ("No matching distribution found") and adding it would break
+# `pip install -r requirements.txt` for everyone. It also pins watchdog<4 while
+# Streamlit needs 6.x, so it must be installed without its dependencies:
+#
+#     make profiling-ext
+#
+# or directly:
+#
+#     pip install --no-deps --ignore-requires-python streamlit-ydata-profiling==0.2.1
+#
+# The package is a ~50-line component wrapper and imports cleanly on 3.12; this
+# was checked on 3.12.3. The profiling page degrades to an equivalent inline
+# embed if the import fails, so the app runs either way.
+

@@ -1,4 +1,4 @@
-.PHONY: sync lab marimo dev-deps deps app api
+.PHONY: sync lab marimo dev-deps deps app api profiling-ext test lint
 
 # Sync the project and install dependencies from pyproject.toml
 sync:
@@ -24,3 +24,16 @@ app: app/streamlit_app.py
 
 api: app/api.py
 	uvicorn app.api:app --reload
+
+# Install the Streamlit profiling component. Kept out of requirements.txt because
+# it declares Requires-Python <3.12 and pins watchdog<4; --no-deps leaves the
+# project's own streamlit and ydata-profiling pins untouched.
+profiling-ext:
+	pip install --no-deps --ignore-requires-python streamlit-ydata-profiling==0.2.1
+	uv pip install --no-deps --ignore-requires-python streamlit-ydata-profiling==0.2.1
+
+test:
+	pytest tests -q
+
+lint:
+	ruff check app tests
