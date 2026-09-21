@@ -7,6 +7,7 @@ resolution-markers = [
 ]
 
 [manifest]
+overrides = [{ name = "setuptools", specifier = "==80.10.2" }]
 excludes = ["tensorflow-macos"]
 
 [[package]]
@@ -298,7 +299,7 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "wordcloud" },
     { name = "xgboost" },
-    { name = "ydata-profiling", extra = ["notebook"] },
+    { name = "ydata-profiling", extra = ["notebook", "unicode"] },
 ]
 
 [package.dev-dependencies]
@@ -353,7 +354,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = "==0.52.4" },
     { name = "wordcloud", specifier = "==1.9.6" },
     { name = "xgboost", specifier = "==3.3.0" },
-    { name = "ydata-profiling", extras = ["notebook"], specifier = ">=4.18.4" },
+    { name = "ydata-profiling", extras = ["notebook", "unicode"], specifier = ">=4.18.4" },
 ]
 
 [package.metadata.requires-dev]
@@ -3359,11 +3360,11 @@ wheels = [
 
 [[package]]
 name = "setuptools"
-version = "84.0.0"
+version = "80.10.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6d/44/f5da03a8ef95d369145c5bb53050e7877c9f3d312e128605fd9504829143/setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73", size = 1168449, upload-time = "2026-08-08T18:27:58.365Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670", size = 818216, upload-time = "2026-08-08T18:27:56.719Z" },
+    { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
 ]
 
 [[package]]
@@ -3590,6 +3591,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
+]
+
+[[package]]
+name = "tangled-up-in-unicode"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/59/f6ae6399c25b61719ebcca245d9be0805ce0767fd12879b75f6d0b04331e/tangled_up_in_unicode-0.2.0.tar.gz", hash = "sha256:de56dbaf32de1b8c65621f97b06b7de21cba18c8e61f3988a426ffe3c40fed36", size = 4627932, upload-time = "2021-09-27T22:01:35.847Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/60/3651960b74aead282ec1ad819e70bdccf3ee73322d13d4339a6e3f5b7ed3/tangled_up_in_unicode-0.2.0-py3-none-any.whl", hash = "sha256:154be12605b1687a17133aa741ae951cf9ee531c48a0c19f98d83ec5cb3cc7be", size = 4731076, upload-time = "2021-09-27T22:01:34.039Z" },
 ]
 
 [[package]]
@@ -4376,6 +4386,9 @@ wheels = [
 notebook = [
     { name = "ipywidgets" },
     { name = "jupyter" },
+]
+unicode = [
+    { name = "tangled-up-in-unicode" },
 ]
 
 [[package]]
