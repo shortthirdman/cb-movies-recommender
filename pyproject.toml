@@ -1,0 +1,71 @@
+[project]
+name = "cb-movies-recommender"
+version = "0.1.0"
+description = "Demographic and content-based movie recommender over public heterogeneous film datasets (MDX Dubai CST4275)"
+readme = "README.md"
+requires-python = ">=3.12.13,<=3.13.12"
+dependencies = [
+    "beartype==0.22.9",
+    "dirty-equals==0.8",
+    "fastapi>=0.141.1",
+    "hypothesis==6.112",
+    "joblib==1.5.3",
+    "keras==3.15.0",
+    "matplotlib==3.10.0",
+    "narwhals==2.24.0",
+    "networkx==3.6.1",
+    "nltk==3.10.0",
+    "numpy==2.3.5",
+    "pandas==2.3.3",
+    "polars==1.43.0",
+    "polars-runtime-32==1.43.0",
+    "pyarrow==24.0.0",
+    "pydantic==2.13.4",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv==1.2.2",
+    "requests==2.34.2",
+    "returns==0.28.0",
+    "rich==15.0.0",
+    "scikit-learn==1.9.0",
+    "scikit-surprise==1.1.5",
+    "scipy==1.16.3",
+    "seaborn==0.13.2",
+    "sentence-transformers==3.0",
+    "spacy==3.7",
+    "statsmodels==0.14.6",
+    "streamlit==1.60.0",
+    "tensorflow==2.20.0",
+    "tensorflow-recommenders==0.7.7",
+    "tf-keras==2.20.0",
+    "torch==2.13.0",
+    "transformers==4.44",
+    "uvicorn[standard]==0.52.4",
+    "wordcloud==1.9.6",
+    "xgboost==3.3.0",
+    "ydata-profiling[notebook,unicode]>=4.18.4",
+]
+
+[tool.ruff]
+line-length = 100
+# target-version = "py312"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "PTH", "RUF"]
+
+[tool.uv]
+exclude-dependencies = ["tensorflow-macos"]
+override-dependencies = ["setuptools==80.10.2"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "ipywidgets>=8.1.9",
+    "jedi-language-server>=0.47.0",
+    "jupyter-contrib-nbextensions>=0.7.0",
+    "jupyter-lsp>=2.3.1",
+    "jupyter-nbextensions-configurator>=0.6.4",
+    "jupyterlab>=4.6.3",
+    "jupyterlab-lsp>=5.3.0",
+    "notebook>=7.6.2",
+]
