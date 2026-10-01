@@ -1,7 +1,13 @@
 """Content-based movie recommendation API.
 
-Serves the v0 baseline dumped by ``03_baseline_model.ipynb``: given a film title,
-return the most similar films by cosine similarity over its TF-IDF representation.
+Given a film title, return the most similar films by cosine similarity. Two
+models are served, chosen per request with the ``model`` query parameter:
+
+* ``v0`` (default) - the baseline dumped by ``03_baseline_model.ipynb``, scoring
+  over one sparse TF-IDF representation.
+* ``tf`` - the two-tower model exported by ``04_tensorflow_based_recomm.ipynb``,
+  scoring over its precomputed item embeddings. The towers already ran when the
+  notebook exported those embeddings, so serving needs no TensorFlow.
 
 Run locally::
 
@@ -9,8 +15,9 @@ Run locally::
 
 Configuration is environment-driven with a ``RECSYS_`` prefix::
 
-    RECSYS_MODEL_PATH=models/baseline_v0.pkl
+    RECSYS_MODEL_PATH=models/baseline_v0/baseline_v0.joblib
     RECSYS_REPRESENTATION=combined_tfidf
+    RECSYS_TF_MODEL_DIR=models/tf_v1
 """
 
 import logging
@@ -18,24 +25,28 @@ import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Final, Self
 
 import joblib
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sklearn.utils.extmath import safe_sparse_dot
 
-__all__ = ["Recommender", "Settings", "app"]
+__all__ = ["ModelName", "Recommender", "Settings", "app"]
 
 logger: Final = logging.getLogger("recsys.api")
 
 _MISSING_TITLE: Final = "unknown title"
+_TF_REPRESENTATION: Final = "tf_two_tower"
+_TF_EMBEDDINGS: Final = "item_embeddings.npz"
 
 
 # --------------------------------------------------------------------------- #
@@ -52,8 +63,9 @@ class Settings(BaseSettings):
         env_prefix="RECSYS_", env_file=".env", extra="ignore", protected_namespaces=()
     )
 
-    model_path: Path = Path("models/baseline_v0.pkl")
+    model_path: Path = Path("models/baseline_v0/baseline_v0.joblib")
     representation: str = "combined_tfidf"
+    tf_model_dir: Path = Path("models/tf_v1")
 
 
 @lru_cache(maxsize=1)
@@ -71,15 +83,24 @@ class TitleNotFoundError(LookupError):
     """Raised when a requested title has no match in the catalogue."""
 
 
+class ModelName(StrEnum):
+    """The models a request can choose between."""
+
+    V0 = "v0"
+    TF = "tf"
+
+
 @dataclass(frozen=True, slots=True)
 class Recommender:
     """Cosine retrieval over one row-normalised representation.
 
-    The matrix rows are L2-normalised by the training notebook, so cosine
-    similarity is a plain dot product and no renormalisation happens per request.
+    The matrix is sparse TF-IDF for the baseline and dense learned embeddings for
+    the TensorFlow model. Its rows are L2-normalised by the training notebook in
+    both cases, so cosine similarity is a plain dot product and no
+    renormalisation happens per request.
     """
 
-    matrix: sp.csr_matrix
+    matrix: sp.csr_matrix | np.ndarray
     titles: tuple[str, ...]
     years: tuple[int | None, ...]
     exact: dict[str, int]
@@ -97,7 +118,32 @@ class Recommender:
             )
             raise KeyError(msg)
 
-        catalogue = bundle["catalogue"]
+        return cls._from_catalogue(
+            available[representation]["matrix"].tocsr(), bundle["catalogue"], representation
+        )
+
+    @classmethod
+    def from_embeddings(
+        cls, embeddings: np.ndarray, movie_ids: np.ndarray, catalogue: pd.DataFrame
+    ) -> Self:
+        """Build from the item embeddings exported by the TensorFlow notebook.
+
+        The export holds vectors and movie ids only, so titles, years and rating
+        counts come from the baseline catalogue. Both notebooks draw the same
+        25,000-film sample, but rows are matched on ``movie_id`` instead of being
+        trusted to share an order, and an id missing from either side is an error.
+        """
+        if not np.array_equal(np.sort(movie_ids), np.sort(catalogue["movie_id"].to_numpy())):
+            msg = "embedding movie ids do not match the catalogue's"
+            raise ValueError(msg)
+        aligned = catalogue.set_index("movie_id").loc[movie_ids].reset_index()
+        return cls._from_catalogue(embeddings, aligned, _TF_REPRESENTATION)
+
+    @classmethod
+    def _from_catalogue(
+        cls, matrix: sp.csr_matrix | np.ndarray, catalogue: pd.DataFrame, representation: str
+    ) -> Self:
+        """Attach the title index to a matrix whose rows follow ``catalogue``."""
         titles = [str(t) for t in catalogue["title_clean"]]
         years = [None if v is None or v != v else int(v) for v in catalogue["release_year"]]
 
@@ -114,7 +160,7 @@ class Recommender:
                 exact[key] = row
 
         return cls(
-            matrix=available[representation]["matrix"].tocsr(),
+            matrix=matrix,
             titles=tuple(titles),
             years=tuple(years),
             exact=exact,
@@ -212,41 +258,58 @@ class HealthResponse(CamelModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    """Load the model once at startup rather than per request.
+    """Load both models once at startup rather than per request.
 
-    The bundle is ~21 MB and deserialising it takes most of a second; doing that
-    inside a request handler would dominate every response.
+    The baseline bundle is ~131 MB and takes around two seconds to deserialise;
+    doing that inside a request handler would dominate every response. The
+    TensorFlow model adds only its 12 MB embedding matrix, because it borrows the
+    baseline's catalogue for titles.
     """
     settings = get_settings()
     started = time.perf_counter()
-    if not settings.model_path.is_file():
-        msg = f"model bundle not found at {settings.model_path}"
-        raise RuntimeError(msg)
+    embeddings_path = settings.tf_model_dir / _TF_EMBEDDINGS
+    for path in (settings.model_path, embeddings_path):
+        if not path.is_file():
+            msg = f"model artefact not found at {path}"
+            raise RuntimeError(msg)
 
     bundle = joblib.load(settings.model_path)
-    app.state.recommender = Recommender.from_bundle(bundle, settings.representation)
-    logger.info(
-        "loaded %s (%d films, representation=%s) in %.2fs",
-        settings.model_path,
-        len(app.state.recommender.titles),
-        settings.representation,
-        time.perf_counter() - started,
-    )
+    with np.load(embeddings_path) as export:
+        tf_model = Recommender.from_embeddings(
+            export["embeddings"], export["movie_id"], bundle["catalogue"]
+        )
+    app.state.recommenders = {
+        ModelName.V0: Recommender.from_bundle(bundle, settings.representation),
+        ModelName.TF: tf_model,
+    }
+    for name, model in app.state.recommenders.items():
+        logger.info(
+            "loaded %s (%d films, representation=%s)", name, len(model.titles), model.representation
+        )
+    logger.info("models ready in %.2fs", time.perf_counter() - started)
     yield
-    app.state.recommender = None
+    app.state.recommenders = {}
 
 
 app = FastAPI(
     title="Content-Based Movie Recommender",
-    version="0.1.0",
-    summary="Similar-film recommendations from the CST4275 v0 baseline model.",
+    version="0.2.0",
+    summary=(
+        "Similar-film recommendations from the CST4275 v0 baseline and TensorFlow two-tower models."
+    ),
     lifespan=lifespan,
 )
 
 
-def get_recommender(request: Request) -> Recommender:
-    """Dependency handing the loaded model to a handler."""
-    recommender: Recommender | None = getattr(request.app.state, "recommender", None)
+def get_recommender(
+    request: Request,
+    model: Annotated[
+        ModelName, Query(description="Model that scores the request: baseline or TensorFlow.")
+    ] = ModelName.V0,
+) -> Recommender:
+    """Dependency handing the requested model to a handler."""
+    recommenders: dict[ModelName, Recommender] = getattr(request.app.state, "recommenders", {})
+    recommender = recommenders.get(model)
     if recommender is None:  # pragma: no cover - only during startup or shutdown
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="model not loaded"
